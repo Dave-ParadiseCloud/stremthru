@@ -576,19 +576,7 @@ func handleStrem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	glParams := &store.GenerateLinkParams{
-		Link:     link,
-		ClientIP: ctx.ClientIP,
-	}
-	glParams.APIKey = ctx.StoreAuthToken
-	glRes, err := ctx.Store.GenerateLink(glParams)
-	if err != nil {
-		core.LogError("[stremio/wrap] failed to generate link", err)
-		redirectToStaticVideo(w, r, cacheKey, "500")
-		return
-	}
-
-	glRes, err = shared.GenerateStremThruLink(r, ctx, glRes.Link)
+	glRes, err := shared.GenerateStremThruLink(r, ctx, link)
 	if err != nil {
 		core.LogError("[stremio/wrap] failed to generate stremthru link", err)
 		redirectToStaticVideo(w, r, cacheKey, "500")
