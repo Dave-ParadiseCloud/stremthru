@@ -139,8 +139,8 @@ func newRedisCache[V any](conf *CacheConfig) *RedisCache[V] {
 
 	cache := &RedisCache[V]{
 		c: rc.New(&rc.Options{
-			Redis:      redis,
-			LocalCache: newLocalCache(1024, conf.Lifetime/2),
+			Redis: redis,
+			// LocalCache: newLocalCache(1024, conf.Lifetime/2),
 		}),
 		name:     conf.Name,
 		lifetime: conf.Lifetime,
