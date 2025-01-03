@@ -29,6 +29,7 @@ type UserData struct {
 	ManifestURL string   `json:"manifest_url"`
 	StoreName   string   `json:"store"`
 	StoreToken  string   `json:"token"`
+	CachedOnly  bool     `json:"cached"`
 	encoded     string   `json:"-"`
 	baseUrl     *url.URL `json:"-"`
 }
@@ -143,6 +144,7 @@ func getUserData(r *http.Request) (*UserData, error) {
 
 		data.StoreName = r.FormValue("store")
 		data.StoreToken = r.FormValue("token")
+		data.CachedOnly = r.FormValue("cached") == "on"
 		encoded, err := data.GetEncoded()
 		if err != nil {
 			return nil, err
@@ -193,6 +195,32 @@ func handleManifest(w http.ResponseWriter, r *http.Request) {
 	SendResponse(w, 200, manifest)
 }
 
+func getStoreNameConfig() configure.Config {
+	options := []configure.ConfigOption{
+		configure.ConfigOption{Value: "", Label: "StremThru"},
+		configure.ConfigOption{Value: "alldebrid", Label: "AllDebrid"},
+		configure.ConfigOption{Value: "debridlink", Label: "DebridLink"},
+		configure.ConfigOption{Value: "easydebrid", Label: "EasyDebrid"},
+		configure.ConfigOption{Value: "offcloud", Label: "Offcloud"},
+		configure.ConfigOption{Value: "premiumize", Label: "Premiumize"},
+		configure.ConfigOption{Value: "realdebrid", Label: "RealDebrid"},
+		configure.ConfigOption{Value: "torbox", Label: "TorBox"},
+	}
+	if !config.ProxyStreamEnabled {
+		options[0].Disabled = true
+		options[0].Label = ""
+	}
+	config := configure.Config{
+		Key:      "store",
+		Type:     "select",
+		Default:  "",
+		Title:    "Store Name",
+		Options:  options,
+		Required: !config.ProxyStreamEnabled,
+	}
+	return config
+}
+
 func getTemplateData() *configure.TemplateData {
 	return &configure.TemplateData{
 		Title:       "StremThru Wrap",
@@ -210,23 +238,7 @@ func getTemplateData() *configure.TemplateData {
 					OnClick: "onUpstreamManifestConfigure()",
 				},
 			},
-			configure.Config{
-				Key:     "store",
-				Type:    "select",
-				Default: "",
-				Title:   "Store Name",
-				Options: []configure.ConfigOption{
-					configure.ConfigOption{Value: "", Label: "StremThru"},
-					configure.ConfigOption{Value: "alldebrid", Label: "AllDebrid"},
-					configure.ConfigOption{Value: "debridlink", Label: "DebridLink"},
-					configure.ConfigOption{Value: "easydebrid", Label: "EasyDebrid"},
-					configure.ConfigOption{Value: "offcloud", Label: "Offcloud"},
-					configure.ConfigOption{Value: "premiumize", Label: "Premiumize"},
-					configure.ConfigOption{Value: "realdebrid", Label: "RealDebrid"},
-					configure.ConfigOption{Value: "torbox", Label: "TorBox"},
-				},
-				Required: false,
-			},
+			getStoreNameConfig(),
 			configure.Config{
 				Key:         "token",
 				Type:        "password",
@@ -234,6 +246,12 @@ func getTemplateData() *configure.TemplateData {
 				Title:       "Store Token",
 				Description: "",
 				Required:    true,
+			},
+			configure.Config{
+				Key:     "cached",
+				Type:    configure.ConfigTypeCheckbox,
+				Title:   "Only Show Cached Content",
+				Options: []configure.ConfigOption{},
 			},
 		},
 		Script: configure.GetScriptStoreTokenDescription("store", "token") + `
@@ -267,6 +285,10 @@ func handleConfigure(w http.ResponseWriter, r *http.Request) {
 			conf.Default = ud.StoreName
 		case "token":
 			conf.Default = ud.StoreToken
+		case "cached":
+			if ud.CachedOnly {
+				conf.Default = "checked"
+			}
 		}
 	}
 
@@ -372,6 +394,12 @@ func handleResource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	eud, err := ud.GetEncoded()
+	if err != nil {
+		SendError(w, err)
+		return
+	}
+
 	if resource == string(stremio.ResourceNameStream) {
 		res, err := addon.FetchStream(&stremio_addon.FetchStreamParams{
 			BaseURL:  ud.baseUrl,
@@ -399,21 +427,25 @@ func handleResource(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		stremId := strings.TrimSuffix(id, ".json")
 		isCachedByHash := map[string]bool{}
-		cmParams := &store.CheckMagnetParams{Magnets: hashes}
-		cmParams.APIKey = ctx.StoreAuthToken
-		cmParams.ClientIP = ctx.ClientIP
-		cmParams.SId = stremId
-		cmRes, err := ctx.Store.CheckMagnet(cmParams)
-		if err != nil {
-			SendError(w, err)
-			return
-		}
-		for _, item := range cmRes.Items {
-			isCachedByHash[item.Hash] = item.Status == store.MagnetStatusCached
+		if len(hashes) > 0 {
+			stremId := strings.TrimSuffix(id, ".json")
+			cmParams := &store.CheckMagnetParams{Magnets: hashes}
+			cmParams.APIKey = ctx.StoreAuthToken
+			cmParams.ClientIP = ctx.ClientIP
+			cmParams.SId = stremId
+			cmRes, err := ctx.Store.CheckMagnet(cmParams)
+			if err != nil {
+				SendError(w, err)
+				return
+			}
+			for _, item := range cmRes.Items {
+				isCachedByHash[item.Hash] = item.Status == store.MagnetStatusCached
+			}
 		}
 
+		cachedStreams := []stremio.Stream{}
+		uncachedStreams := []stremio.Stream{}
 		storeNamePrefix := "[" + strings.ToUpper(string(ctx.Store.GetName().Code())) + "] "
 		for i := range res.Data.Streams {
 			stream := &res.Data.Streams[i]
@@ -423,13 +455,6 @@ func handleResource(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 				stream.Name = storeNamePrefix + stream.Name
-				if isCached, ok := isCachedByHash[magnet.Hash]; ok && isCached {
-					stream.Name = "⚡ " + stream.Name
-				}
-				eud, err := ud.GetEncoded()
-				if err != nil {
-					continue
-				}
 				url := shared.ExtractRequestBaseURL(r).JoinPath("/stremio/wrap/" + eud + "/_/strem/" + magnet.Hash + "/" + strconv.Itoa(stream.FileIndex) + "/")
 				if stream.BehaviorHints != nil && stream.BehaviorHints.Filename != "" {
 					url = url.JoinPath(stream.BehaviorHints.Filename)
@@ -437,12 +462,35 @@ func handleResource(w http.ResponseWriter, r *http.Request) {
 				stream.URL = url.String()
 				stream.InfoHash = ""
 				stream.FileIndex = 0
+
+				if isCached, ok := isCachedByHash[magnet.Hash]; ok && isCached {
+					stream.Name = "⚡ " + stream.Name
+					cachedStreams = append(cachedStreams, *stream)
+				} else if !ud.CachedOnly {
+					uncachedStreams = append(uncachedStreams, *stream)
+				}
 			} else if stream.URL != "" {
 				if url, err := shared.CreateProxyLink(r, ctx, stream.URL); err == nil && url != stream.URL {
 					stream.URL = url
 					stream.Name = "✨ " + stream.Name
 				}
+				cachedStreams = append(cachedStreams, *stream)
 			}
+		}
+
+		streams := make([]stremio.Stream, len(cachedStreams)+len(uncachedStreams))
+		idx := 0
+		for i := range cachedStreams {
+			streams[idx] = cachedStreams[i]
+			idx++
+		}
+		for i := range uncachedStreams {
+			streams[idx] = uncachedStreams[i]
+			idx++
+		}
+
+		if len(streams) > 0 {
+			res.Data.Streams = streams
 		}
 
 		SendResponse(w, 200, res.Data)

@@ -127,21 +127,22 @@ func (stc StoreTunnelConfigMap) IsEnabledForStream(name string) bool {
 }
 
 type Config struct {
-	Port              string
-	StoreAuthToken    StoreAuthTokenMap
-	ProxyAuthPassword ProxyAuthPasswordMap
-	BuddyURL          string
-	HasBuddy          bool
-	PeerURL           string
-	PeerAuthToken     string
-	HasPeer           bool
-	RedisURI          string
-	DatabaseURI       string
-	StremioAddon      StremioAddonConfig
-	Version           string
-	LandingPage       string
-	ServerStartTime   time.Time
-	StoreTunnel       StoreTunnelConfigMap
+	Port               string
+	StoreAuthToken     StoreAuthTokenMap
+	ProxyAuthPassword  ProxyAuthPasswordMap
+	ProxyStreamEnabled bool
+	BuddyURL           string
+	HasBuddy           bool
+	PeerURL            string
+	PeerAuthToken      string
+	HasPeer            bool
+	RedisURI           string
+	DatabaseURI        string
+	StremioAddon       StremioAddonConfig
+	Version            string
+	LandingPage        string
+	ServerStartTime    time.Time
+	StoreTunnel        StoreTunnelConfigMap
 }
 
 func parseUri(uri string) (parsedUrl, parsedToken string) {
@@ -221,26 +222,28 @@ var config = func() Config {
 	}
 
 	return Config{
-		Port:              getEnv("STREMTHRU_PORT", "8080"),
-		ProxyAuthPassword: proxyAuthPasswordMap,
-		StoreAuthToken:    storeAuthTokenMap,
-		BuddyURL:          buddyUrl,
-		HasBuddy:          len(buddyUrl) > 0,
-		PeerURL:           peerUrl,
-		PeerAuthToken:     peerAuthToken,
-		HasPeer:           len(peerUrl) > 0,
-		RedisURI:          getEnv("STREMTHRU_REDIS_URI", ""),
-		DatabaseURI:       databaseUri,
-		StremioAddon:      stremioAddon,
-		Version:           "0.27.1", // x-release-please-version
-		LandingPage:       getEnv("STREMTHRU_LANDING_PAGE", "{}"),
-		ServerStartTime:   time.Now(),
-		StoreTunnel:       storeTunnelMap,
+		Port:               getEnv("STREMTHRU_PORT", "8080"),
+		ProxyAuthPassword:  proxyAuthPasswordMap,
+		ProxyStreamEnabled: len(proxyAuthPasswordMap) > 0,
+		StoreAuthToken:     storeAuthTokenMap,
+		BuddyURL:           buddyUrl,
+		HasBuddy:           len(buddyUrl) > 0,
+		PeerURL:            peerUrl,
+		PeerAuthToken:      peerAuthToken,
+		HasPeer:            len(peerUrl) > 0,
+		RedisURI:           getEnv("STREMTHRU_REDIS_URI", ""),
+		DatabaseURI:        databaseUri,
+		StremioAddon:       stremioAddon,
+		Version:            "0.28.0", // x-release-please-version
+		LandingPage:        getEnv("STREMTHRU_LANDING_PAGE", "{}"),
+		ServerStartTime:    time.Now(),
+		StoreTunnel:        storeTunnelMap,
 	}
 }()
 
 var Port = config.Port
 var ProxyAuthPassword = config.ProxyAuthPassword
+var ProxyStreamEnabled = config.ProxyStreamEnabled
 var StoreAuthToken = config.StoreAuthToken
 var BuddyURL = config.BuddyURL
 var HasBuddy = config.HasBuddy

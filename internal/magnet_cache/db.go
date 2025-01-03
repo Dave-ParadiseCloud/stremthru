@@ -85,6 +85,10 @@ func (mc MagnetCache) IsStale() bool {
 }
 
 func GetByHashes(store store.StoreCode, hashes []string, sid string) ([]MagnetCache, error) {
+	if len(hashes) == 0 {
+		return []MagnetCache{}, nil
+	}
+
 	filesByHash, err := GetFilesByHashes(hashes)
 	if err != nil {
 		return nil, err

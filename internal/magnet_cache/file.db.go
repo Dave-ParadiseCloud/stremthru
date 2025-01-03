@@ -18,6 +18,12 @@ type MagnetCacheFile struct {
 }
 
 func GetFilesByHashes(hashes []string) (map[string]Files, error) {
+	byHash := map[string]Files{}
+
+	if len(hashes) == 0 {
+		return byHash, nil
+	}
+
 	args := make([]interface{}, len(hashes))
 	hashPlaceholders := make([]string, len(hashes))
 	for i, hash := range hashes {
@@ -31,7 +37,6 @@ func GetFilesByHashes(hashes []string) (map[string]Files, error) {
 	}
 	defer rows.Close()
 
-	byHash := map[string]Files{}
 	for rows.Next() {
 		hash := ""
 		files := Files{}

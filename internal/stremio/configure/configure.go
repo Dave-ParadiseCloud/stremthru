@@ -25,8 +25,9 @@ type ConfigAction struct {
 }
 
 type ConfigOption struct {
-	Value string
-	Label string
+	Disabled bool
+	Value    string
+	Label    string
 }
 
 type Config struct {
