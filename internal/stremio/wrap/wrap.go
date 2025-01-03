@@ -137,6 +137,10 @@ func getUserData(r *http.Request) (*UserData, error) {
 
 	if IsMethod(r, http.MethodPost) {
 		data.ManifestURL = r.FormValue("manifest_url")
+		if strings.HasPrefix(data.ManifestURL, "stremio:") {
+			data.ManifestURL = "https:" + strings.TrimPrefix(data.ManifestURL, "stremio:")
+		}
+
 		data.StoreName = r.FormValue("store")
 		data.StoreToken = r.FormValue("token")
 		encoded, err := data.GetEncoded()
@@ -215,6 +219,7 @@ func getTemplateData() *configure.TemplateData {
 					configure.ConfigOption{Value: "", Label: "StremThru"},
 					configure.ConfigOption{Value: "alldebrid", Label: "AllDebrid"},
 					configure.ConfigOption{Value: "debridlink", Label: "DebridLink"},
+					configure.ConfigOption{Value: "easydebrid", Label: "EasyDebrid"},
 					configure.ConfigOption{Value: "offcloud", Label: "Offcloud"},
 					configure.ConfigOption{Value: "premiumize", Label: "Premiumize"},
 					configure.ConfigOption{Value: "realdebrid", Label: "RealDebrid"},

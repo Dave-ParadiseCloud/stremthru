@@ -9,6 +9,7 @@ func GetScriptStoreTokenDescription(storeNameId, storeTokenId string) template.J
     "": "StremThru Basic Auth Token (base64 encoded) from <a href='https://github.com/MunifTanjim/stremthru?tab=readme-ov-file#configuration' target='_blank'><code>STREMTHRU_PROXY_AUTH</code></a>",
 		alldebrid: "AllDebrid <a href='https://alldebrid.com/apikeys' target='_blank'>API Key</a>",
 		debridlink: "DebridLink <a href='https://debrid-link.com/webapp/apikey' target='_blank'>API Key</a>",
+		easydebrid: "EasyDebrid API Key",
 		offcloud: "Offcloud <a href='https://offcloud.com/#/account' target='_blank'>credential</a> in <code>email:password</code> format, e.g. <code>john.doe@example.com:secret-password</code>",
 		premiumize: "Premiumize <a href='https://www.premiumize.me/account' target='_blank'>API Key</a>",
 		realdebrid: "RealDebrid <a href='https://real-debrid.com/apitoken' target='_blank'>API Token</a>",
