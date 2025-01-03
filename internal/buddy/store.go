@@ -39,8 +39,11 @@ func TrackMagnet(s store.Store, hash string, files []store.MagnetFile, sid strin
 			CacheMiss: cacheMiss,
 			SId:       sid,
 		}
+		start := time.Now()
 		if _, err := Buddy.TrackMagnetCache(params); err != nil {
-			core.LogError(fmt.Sprintf("[buddy] failed to track magnet cache for %s:%s", s.GetName(), hash), err)
+			core.LogError(fmt.Sprintf("[buddy] failed to track magnet cache for %s:%s, took %v", s.GetName(), hash, time.Since(start)), err)
+		} else {
+			log.Printf("[buddy] track magnet cache for %s:%s, took %v", s.GetName(), hash, time.Since(start))
 		}
 	}
 
@@ -53,8 +56,11 @@ func TrackMagnet(s store.Store, hash string, files []store.MagnetFile, sid strin
 			IsMiss:     cacheMiss,
 			SId:        sid,
 		}
+		start := time.Now()
 		if _, err := Peer.TrackMagnet(params); err != nil {
-			core.LogError(fmt.Sprintf("[buddy:upstream] failed to track magnet cache for %s:%s: %v\n", s.GetName(), hash), err)
+			core.LogError(fmt.Sprintf("[buddy:upstream] failed to track magnet cache for %s:%s, took %v", s.GetName(), hash, time.Since(start)), err)
+		} else {
+			log.Printf("[buddy:upstream] track magnet cache for %s:%s, took %v", s.GetName(), hash, time.Since(start))
 		}
 	}
 }
