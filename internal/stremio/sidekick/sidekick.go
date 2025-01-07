@@ -85,45 +85,6 @@ func getCookieValue(w http.ResponseWriter, r *http.Request) (*CookieValue, error
 	return value, nil
 }
 
-func getTemplateData(cookie *CookieValue, r *http.Request) *TemplateData {
-	td := &TemplateData{
-		Title:       "Stremio Sidekick",
-		Description: "Extra Features for Stremio",
-	}
-	if cookie != nil && !cookie.IsExpired {
-		td.IsAuthed = true
-		td.Email = cookie.Email()
-	}
-	if !td.IsAuthed {
-		td.Login.Email = ""
-		td.Login.Password = ""
-	}
-
-	td.LoginMethod = r.URL.Query().Get("login_method")
-	if td.LoginMethod == "" {
-		hxCurrUrl := r.Header.Get("hx-current-url")
-		if hxCurrUrl != "" {
-			if hxUrl, err := url.Parse(hxCurrUrl); err == nil {
-				td.LoginMethod = hxUrl.Query().Get("login_method")
-			}
-		}
-	}
-	if td.LoginMethod == "" {
-		td.LoginMethod = "password"
-	}
-
-	td.AddonOperation = r.URL.Query().Get("addon_operation")
-	if td.AddonOperation == "" {
-		hxCurrUrl := r.Header.Get("hx-current-url")
-		if hxCurrUrl != "" {
-			if hxUrl, err := url.Parse(hxCurrUrl); err == nil {
-				td.AddonOperation = hxUrl.Query().Get("addon_operation")
-			}
-		}
-	}
-	return td
-}
-
 func handleRoot(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasSuffix(r.URL.Path, "/") {
 		http.Redirect(w, r, r.URL.Path+"/", http.StatusFound)
@@ -138,7 +99,7 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 
 	td := getTemplateData(cookie, r)
 
-	buf, err := GetPage(td)
+	buf, err := getPage(td)
 	if err != nil {
 		SendError(w, err)
 		return
@@ -184,7 +145,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 			case stremio_api.ErrorCodeWrongPassphrase:
 				td.Login.Error.Password = rerr.Message
 			}
-			buf, err := ExecuteTemplate(td, "account_section.html")
+			buf, err := executeTemplate(td, "sidekick_account_section.html")
 			if err != nil {
 				SendError(w, err)
 				return
@@ -218,7 +179,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 			case stremio_api.ErrorCodeSessionNotFound:
 				td.Login.Error.Token = rerr.Message
 			}
-			buf, err := ExecuteTemplate(td, "account_section.html")
+			buf, err := executeTemplate(td, "sidekick_account_section.html")
 			if err != nil {
 				SendError(w, err)
 				return
@@ -266,7 +227,7 @@ func handleAddons(w http.ResponseWriter, r *http.Request) {
 	td := getTemplateData(cookie, r)
 	td.Addons = res.Data.Addons
 
-	buf, err := ExecuteTemplate(td, "addons_section.html")
+	buf, err := executeTemplate(td, "sidekick_addons_section.html")
 	if err != nil {
 		SendError(w, err)
 		return
@@ -359,7 +320,7 @@ func handleAddonMove(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	buf, err := ExecuteTemplate(td, "addons_section.html")
+	buf, err := executeTemplate(td, "sidekick_addons_section.html")
 	if err != nil {
 		SendError(w, err)
 		return
@@ -413,16 +374,23 @@ func handleAddonReload(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if transportUrl, err := url.Parse(manifestUrl); err == nil {
-			transportUrl.Path = strings.TrimSuffix(transportUrl.Path, "/manifest.json")
+			rawPath := transportUrl.RawPath
+			if rawPath == "" {
+				rawPath = transportUrl.Path
+			}
+			transportUrl.RawPath = strings.TrimSuffix(rawPath, "/manifest.json")
+			transportUrl.Path, _ = url.PathUnescape(transportUrl.RawPath)
 
 			manifest, err := addon_client.GetManifest(&stremio_addon.GetManifestParams{
 				BaseURL: transportUrl,
 			})
 			if err != nil {
 				err_msg := fmt.Sprintf("[stremio/sidekick] failed to get manifest: %v\n", core.PackError(err))
+				log.Print(err_msg)
 				td.AddonError = strings.TrimSpace(err_msg)
 			} else if manifest.Data.ID != addon.Manifest.ID && manifest.Data.Name != addon.Manifest.Name {
 				err_msg := fmt.Sprintf("[stremio/sidekick] both manifest id and name changed\n")
+				log.Print(err_msg)
 				td.AddonError = strings.TrimSpace(err_msg)
 			} else {
 				refreshedAddon := stremio_api.Addon{
@@ -451,7 +419,7 @@ func handleAddonReload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	buf, err := ExecuteTemplate(td, "addons_section.html")
+	buf, err := executeTemplate(td, "sidekick_addons_section.html")
 	if err != nil {
 		SendError(w, err)
 		return
@@ -511,6 +479,7 @@ func handleAddonToggle(w http.ResponseWriter, r *http.Request) {
 					})
 					if err != nil {
 						err_msg := fmt.Sprintf("[stremio/sidekick] failed to get manifest: %v\n", core.PackError(err))
+						log.Print(err_msg)
 						td.AddonError = strings.TrimSpace(err_msg)
 					} else {
 						enabledAddon := stremio_api.Addon{
@@ -525,15 +494,15 @@ func handleAddonToggle(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			transportUrl := shared.ExtractRequestBaseURL(r)
-			transportUrl.Path = "/stremio/disabled/" + url.PathEscape(addon.TransportUrl)
-			transportUrl.RawPath = transportUrl.Path
-			transportUrl.Path, _ = url.PathUnescape(transportUrl.Path)
+			transportUrl.RawPath = "/stremio/disabled/" + url.PathEscape(addon.TransportUrl)
+			transportUrl.Path = "/stremio/disabled/" + addon.TransportUrl
 
 			manifest, err := addon_client.GetManifest(&stremio_addon.GetManifestParams{
 				BaseURL: transportUrl,
 			})
 			if err != nil {
 				err_msg := fmt.Sprintf("[stremio/sidekick] failed to get manifest: %v\n", core.PackError(err))
+				log.Print(err_msg)
 				td.AddonError = strings.TrimSpace(err_msg)
 			} else {
 				disabledAddon := stremio_api.Addon{
@@ -563,7 +532,7 @@ func handleAddonToggle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	buf, err := ExecuteTemplate(td, "addons_section.html")
+	buf, err := executeTemplate(td, "sidekick_addons_section.html")
 	if err != nil {
 		SendError(w, err)
 		return

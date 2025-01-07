@@ -47,8 +47,10 @@
         </h3>
       </div>
       <div>
-        {{with (get_configure_url .)}}
-          <a role="button" href="{{.}}" target="_blank">Configure</a>
+        {{if not (has_prefix .Manifest.ID "st:disabled:")}}
+          {{with (get_configure_url .)}}
+            <a role="button" href="{{.}}" target="_blank">Configure</a>
+          {{end}}
         {{end}}
       </div>
     </header>
@@ -125,6 +127,7 @@
         hx-trigger="confirmed"
         data-name="{{.Manifest.Name}}"
         data-version="{{.Manifest.Version}}"
+        data-disabled="{{if (has_prefix .Manifest.ID "st:disabled:")}}true{{end}}"
         data-manifest-url="{{.TransportUrl}}"
         data-configure-url="{{get_configure_url .}}"
         onclick="onAddonReload(this)"
@@ -182,7 +185,7 @@ function onAddonReload(btn) {
   modal.querySelector("#addon_reload_manifest_url").value = btn.dataset.manifestUrl;
   
   const configureUrl = btn.dataset.configureUrl;
-  if (configureUrl) {
+  if (btn.dataset.disabled !== "true" && configureUrl) {
     modal.querySelector("#add_reload_configure_url").style.display = "";
     modal.querySelector("#add_reload_configure_url").href = btn.dataset.configureUrl;
   } else {
@@ -201,7 +204,7 @@ function onAddonReload(btn) {
     if (!content.contains(e.target)) {
       onAddonReloadModalClose();
     }
-  }, { once: true });
+  });
 
   document.querySelector("html").classList.add("modal-is-open");
   modal.setAttribute("open", "");
@@ -210,7 +213,7 @@ function onAddonReload(btn) {
 setTimeout(() => {
     const addon_error = document.querySelector("#addon_error");
     if (addon_error) {
-    window.scrollTo(0, addon_error.offsetTop);
+      window.scrollTo(0, addon_error.offsetTop);
     }
 }, 200)
 </script>

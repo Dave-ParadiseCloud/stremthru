@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%2210 0 100 100%22><text y=%22.90em%22 font-size=%2290%22>✨</text></svg>"></link>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
+    />
+    <script
+      src="https://unpkg.com/htmx.org@2.0.4"
+      integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
+      crossorigin="anonymous"
+    ></script>
+    <title>{{.Title}}</title>
+
+    <style>
+      body {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        padding: 48px;
+      }
+      
+      a > code,
+      span > code {
+        padding: 0;
+      }
+
+      nav #nav-home a {
+        color: initial;
+        text-decoration: none;
+      }
+    </style>
+
+
+    {{block "head" .}}{{end}}
+  </head>
+
+  <body class="container">
+    <nav>
+      <ul>
+        <li id="nav-home"><strong><a href="/">✨ StremThru</a></strong></li>
+      </ul>
+      <ul>
+        <li><a href="https://github.com/MunifTanjim/stremthru" class="secondary" target="_blank">GitHub</a></li>
+        <li>
+          <details class="dropdown">
+            <summary>
+              {{.NavTitle}}
+            </summary>
+            <ul dir="rtl">
+              <li><a href="/stremio/sidekick/">Sidekick</a></li>
+              <li><a href="/stremio/store/">Store</a></li>
+              <li><a href="/stremio/wrap/">Wrap</a></li>
+            </ul>
+          </details>
+        </li>
+      </ul>
+    </nav>
+
+    <header>
+      {{block "header" .}}{{end}}
+    </header>
+
+    <main>
+      {{block "main" .}}{{end}}
+    </main>
+
+    <footer>
+      {{block "footer" .}}{{end}}
+    </footer>
+
+    {{block "foot" .}}{{end}}
+  </body>
+</html>

@@ -2,10 +2,10 @@ package configure
 
 import (
 	"bytes"
-	"embed"
 	"html/template"
 
 	"github.com/MunifTanjim/stremthru/internal/config"
+	"github.com/MunifTanjim/stremthru/internal/stremio/template"
 )
 
 type ConfigType string
@@ -42,10 +42,10 @@ type Config struct {
 	Action      ConfigAction
 }
 
+type Base = stremio_template.BaseData
+
 type TemplateData struct {
-	Title       string
-	Description string
-	Version     string
+	Base
 	Configs     []Config
 	Error       string
 	ManifestURL string
@@ -61,24 +61,13 @@ func (td *TemplateData) HasError() bool {
 	return false
 }
 
-type TemplateExecutor func(data *TemplateData, name string) (bytes.Buffer, error)
-type PageGetter func(data *TemplateData) (bytes.Buffer, error)
-
-//go:embed configure.html configure_config.html
-var templateFs embed.FS
-
-var ExecuteTemplate = func() TemplateExecutor {
-	tmpl := template.Must(template.ParseFS(templateFs, "*.html"))
-	return func(data *TemplateData, name string) (bytes.Buffer, error) {
-		data.Version = config.Version
-		var buf bytes.Buffer
-		err := tmpl.ExecuteTemplate(&buf, name, data)
-		return buf, err
-	}
+var executeTemplate = func() stremio_template.Executor[TemplateData] {
+	return stremio_template.GetExecutor[TemplateData]("stremio/configure", func(td *TemplateData) *TemplateData {
+		td.Version = config.Version
+		return td
+	}, template.FuncMap{}, "configure.html", "configure_*.html")
 }()
 
-var GetPage = func() PageGetter {
-	return func(data *TemplateData) (bytes.Buffer, error) {
-		return ExecuteTemplate(data, "configure.html")
-	}
-}()
+func GetPage(td *TemplateData) (bytes.Buffer, error) {
+	return executeTemplate(td, "configure.html")
+}

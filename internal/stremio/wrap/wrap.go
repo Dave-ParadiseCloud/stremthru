@@ -154,8 +154,10 @@ func getUserData(r *http.Request) (*UserData, error) {
 
 	if data.ManifestURL != "" {
 		if baseUrl, err := url.Parse(data.ManifestURL); err == nil {
-			baseUrl.Path = strings.TrimSuffix(baseUrl.Path, "/manifest.json")
-			data.baseUrl = baseUrl
+			if strings.HasSuffix(baseUrl.Path, "/manifest.json") {
+				baseUrl.Path = strings.TrimSuffix(baseUrl.Path, "/manifest.json")
+				data.baseUrl = baseUrl
+			}
 		}
 	}
 
@@ -221,48 +223,6 @@ func getStoreNameConfig() configure.Config {
 	return config
 }
 
-func getTemplateData() *configure.TemplateData {
-	return &configure.TemplateData{
-		Title:       "StremThru Wrap",
-		Description: "Stremio Addon to Wrap another Addon with StremThru",
-		Configs: []configure.Config{
-			configure.Config{
-				Key:         "manifest_url",
-				Type:        "url",
-				Default:     "",
-				Title:       "Upstream Manifest URL",
-				Description: "Manifest URL for the Upstream Addon",
-				Required:    true,
-				Action: configure.ConfigAction{
-					Label:   "Configure",
-					OnClick: "onUpstreamManifestConfigure()",
-				},
-			},
-			getStoreNameConfig(),
-			configure.Config{
-				Key:         "token",
-				Type:        "password",
-				Default:     "",
-				Title:       "Store Token",
-				Description: "",
-				Required:    true,
-			},
-			configure.Config{
-				Key:     "cached",
-				Type:    configure.ConfigTypeCheckbox,
-				Title:   "Only Show Cached Content",
-				Options: []configure.ConfigOption{},
-			},
-		},
-		Script: configure.GetScriptStoreTokenDescription("store", "token") + `
-function onUpstreamManifestConfigure() {
-  const url = document.querySelector("input[name='manifest_url']").value.replace(/\/manifest.json$/,'') + "/configure";
-  window.open(url, "_blank");
-}
-`,
-	}
-}
-
 func handleConfigure(w http.ResponseWriter, r *http.Request) {
 	if !IsMethod(r, http.MethodGet) && !IsMethod(r, http.MethodPost) {
 		shared.ErrorMethodNotAllowed(r).Send(w)
@@ -320,14 +280,6 @@ func handleConfigure(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if ctx.Store == nil {
-			if ud.StoreName == "" {
-				token_config.Error = "Invalid Token"
-			} else {
-				store_config.Error = "Invalid Store"
-			}
-		}
-
 		if manifest_url_config.Error == "" {
 			manifest, err := addon.GetManifest(&stremio_addon.GetManifestParams{BaseURL: ud.baseUrl, ClientIP: ctx.ClientIP})
 			if err != nil {
@@ -335,6 +287,24 @@ func handleConfigure(w http.ResponseWriter, r *http.Request) {
 				manifest_url_config.Error = "Failed to fetch Manifest"
 			} else if manifest.Data.BehaviorHints != nil && manifest.Data.BehaviorHints.Configurable {
 				manifest_url_config.Action.Visible = true
+			}
+		}
+
+		if manifest_url_config.Error == "" {
+			if ctx.Store == nil {
+				if ud.StoreName == "" {
+					token_config.Error = "Invalid Token"
+				} else {
+					store_config.Error = "Invalid Store"
+				}
+			} else {
+				params := &store.GetUserParams{}
+				params.APIKey = ctx.StoreAuthToken
+				_, err := ctx.Store.GetUser(params)
+				if err != nil {
+					core.LogError("[stremio/wrap] failed to access store", err)
+					token_config.Error = "Failed to access store"
+				}
 			}
 		}
 	}
@@ -593,7 +563,7 @@ func handleStrem(w http.ResponseWriter, r *http.Request) {
 		AddedAt: amRes.AddedAt,
 	}
 
-	magnet, err = waitForMagnetStatus(ctx, magnet, store.MagnetStatusDownloaded, 12, 5*time.Second)
+	magnet, err = waitForMagnetStatus(ctx, magnet, store.MagnetStatusDownloaded, 3, 5*time.Second)
 	buddy.TrackMagnet(ctx.Store, magnet.Hash, magnet.Files, "*", magnet.Status != store.MagnetStatusDownloaded, ctx.StoreAuthToken)
 	if err != nil {
 		core.LogError("[stremio/wrap] failed wait for magnet status", err)
@@ -609,15 +579,38 @@ func handleStrem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	link := ""
-	for i := range magnet.Files {
-		f := &magnet.Files[i]
-		if f.Name == fileName || (fileIdx != -1 && f.Idx == fileIdx) {
-			link = f.Link
-			break
+	var file *store.MagnetFile
+	if fileName != "" {
+		for i := range magnet.Files {
+			f := &magnet.Files[i]
+			if f.Name == fileName {
+				file = f
+				break
+			}
+		}
+	}
+	if file == nil && fileIdx != -1 {
+		for i := range magnet.Files {
+			f := &magnet.Files[i]
+			if f.Idx == fileIdx {
+				file = f
+				break
+			}
+		}
+	}
+	if file == nil {
+		for i := range magnet.Files {
+			f := &magnet.Files[i]
+			if file == nil || file.Size < f.Size {
+				file = f
+			}
 		}
 	}
 
+	link := ""
+	if file != nil {
+		link = file.Link
+	}
 	if link == "" {
 		log.Printf("[stremio/wrap] no matching file found for magnet: %s\n", magnet.Hash)
 		redirectToStaticVideo(w, r, cacheKey, "no_matching_file")

@@ -28,6 +28,17 @@ func handleManifest(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleConfigure(w http.ResponseWriter, r *http.Request) {
+	if !shared.IsMethod(r, http.MethodGet) {
+		shared.ErrorMethodNotAllowed(r).Send(w)
+		return
+	}
+
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	http.Redirect(w, r, "/stremio/sidekick/?addon_operation=manage", http.StatusFound)
+}
+
 func AddStremioDisabledEndpoints(mux *http.ServeMux) {
 	mux.HandleFunc("/stremio/disabled/{manifestUrl}/manifest.json", handleManifest)
+	mux.HandleFunc("/stremio/disabled/{manifestUrl}/configure", handleConfigure)
 }

@@ -34,6 +34,9 @@ func GetDisabledManifest(manifestUrl string) (*stremio.Manifest, error) {
 		Background:   res.Data.Background,
 		Logo:         res.Data.Logo,
 		ContactEmail: res.Data.ContactEmail,
+		BehaviorHints: &stremio.BehaviorHints{
+			Configurable: true,
+		},
 	}
 
 	return manifest, nil

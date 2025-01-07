@@ -7,7 +7,7 @@ Companion for Stremio.
 
 ## Features
 
-- HTTP Proxy
+- HTTP(S) Proxy
 - Proxy Authorization
 - [Byte Serving](https://en.wikipedia.org/wiki/Byte_serving)
 
@@ -30,15 +30,15 @@ Companion for Stremio.
 
 Configuration is done using environment variables.
 
-**`STREMTHRU_HTTP_PROXY`**
+#### `STREMTHRU_HTTP_PROXY`
 
 HTTP Proxy URL.
 
-**`STREMTHRU_HTTPS_PROXY`**
+#### `STREMTHRU_HTTPS_PROXY`
 
 HTTPS Proxy URL.
 
-**`STREMTHRU_PROXY_AUTH`**
+#### `STREMTHRU_PROXY_AUTH`
 
 Comma separated list of credentials, in the following formats:
 
@@ -47,7 +47,7 @@ Comma separated list of credentials, in the following formats:
 
 These will be used for proxy authorization.
 
-**`STREMTHRU_STORE_AUTH`**
+#### `STREMTHRU_STORE_AUTH`
 
 Comma separated list of store credentials, in `username:store_name:store_token` format.
 
@@ -55,16 +55,17 @@ For proxy-authorized requests, these credentials will be used.
 
 If `username` is `*`, it is used as fallback for users without explicit store credentials.
 
-| Store      | `store_name` | `store_token`        |
-| ---------- | ------------ | -------------------- |
-| AllDebrid  | `alldebrid`  | `<api-key>`          |
-| DebridLink | `debridlink` | `<api-key>`          |
-| Offcloud   | `offcloud`   | `<email>:<password>` |
-| Premiumize | `premiumize` | `<api-key>`          |
-| RealDebrid | `realdebrid` | `<api-token>`        |
-| Torbox     | `torbox`     | `<api-key>`          |
+| Store       | `store_name` | `store_token`        |
+| ----------- | ------------ | -------------------- |
+| AllDebrid   | `alldebrid`  | `<api-key>`          |
+| Debrid-Link | `debridlink` | `<api-key>`          |
+| EasyDebrid  | `easydebrid` | `<api-key>`          |
+| Offcloud    | `offcloud`   | `<email>:<password>` |
+| Premiumize  | `premiumize` | `<api-key>`          |
+| RealDebrid  | `realdebrid` | `<api-token>`        |
+| Torbox      | `torbox`     | `<api-key>`          |
 
-**`STREMTHRU_STORE_TUNNEL`**
+#### `STREMTHRU_STORE_TUNNEL`
 
 Comma separated list of tunnel config for stores, in `store_name:tunnel_config` format.
 
@@ -76,23 +77,25 @@ Comma separated list of tunnel config for stores, in `store_name:tunnel_config` 
 
 If `store_name` is `*`, it is used as fallback.
 
-**`STREMTHRU_PEER_URI`**
+When enabled, `STREMTHRU_HTTP_PROXY` and `STREMTHRU_HTTPS_PROXY` will be used to tunnel traffic for the store.
 
-URI for another StremThru instance, in format `https://:<pass>@<host>[:<port>]`.
+#### `STREMTHRU_PEER_URI`
 
-**`STREMTHRU_REDIS_URI`**
+URI for peer StremThru instance, in format `https://:<pass>@<host>[:<port>]`.
+
+#### `STREMTHRU_REDIS_URI`
 
 URI for Redis, in format `redis://<user>:<pass>@<host>[:<port>][/<db>]`.
 
 If provided, it'll be used for caching instead of in-memory storage.
 
-**`STREMTHRU_DATABASE_URI`**
+#### `STREMTHRU_DATABASE_URI`
 
 URI for Database, in format `<scheme>://<user>:<pass>@<host>[:<port>][/<db>]`.
 
 Supports `sqlite` and `postgresql`.
 
-**`STREMTHRU_STREMIO_ADDON`**
+#### `STREMTHRU_STREMIO_ADDON`
 
 Comma separated list of Stremio Addon names to enable. All available addons are enabled by default.
 
