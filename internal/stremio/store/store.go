@@ -90,9 +90,7 @@ func (ud UserData) GetRequestContext(r *http.Request) (*context.RequestContext, 
 		ctx.StoreAuthToken = storeToken
 	}
 
-	if !ctx.IsProxyAuthorized {
-		ctx.ClientIP = core.GetClientIP(r)
-	}
+	ctx.ClientIP = shared.GetClientIP(r, ctx)
 
 	return ctx, nil
 }

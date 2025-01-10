@@ -17,6 +17,7 @@ Companion for Stremio.
 - [Debrid-Link](https://debrid-link.com)
 - [EasyDebrid](https://easydebrid.com)
 - [Offcloud](https://offcloud.com)
+- [PikPak](https://mypikpak.com)
 - [Premiumize](https://www.premiumize.me)
 - [RealDebrid](https://real-debrid.com)
 - [TorBox](https://torbox.app)
@@ -150,7 +151,7 @@ Get information about authenticated user.
 
 **`POST /v0/store/magnets`**
 
-Add manget link for download.
+Add magnet link for download.
 
 **Request**:
 
@@ -190,7 +191,7 @@ If `.status` is `downloaded`, `.files` will have the list of files.
 
 **`GET /v0/store/magnets`**
 
-List mangets on user's account.
+List magnets on user's account.
 
 **Query Parameter**:
 
@@ -220,7 +221,7 @@ List mangets on user's account.
 
 **`GET /v0/store/magnets/{magnetId}`**
 
-Get manget on user's account.
+Get magnet on user's account.
 
 **Path Parameter**:
 
@@ -253,7 +254,7 @@ Get manget on user's account.
 
 **`DELETE /v0/store/magnets/{magnetId}`**
 
-Remove manget from user's account.
+Remove magnet from user's account.
 
 **Path Parameter**:
 
@@ -263,7 +264,7 @@ Remove manget from user's account.
 
 **`GET /v0/store/magnets/check`**
 
-Check manget links.
+Check magnet links.
 
 **Query Parameter**:
 

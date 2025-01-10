@@ -111,9 +111,7 @@ func (ud UserData) GetRequestContext(r *http.Request) (*context.RequestContext, 
 		ctx.StoreAuthToken = storeToken
 	}
 
-	if !ctx.IsProxyAuthorized {
-		ctx.ClientIP = core.GetClientIP(r)
-	}
+	ctx.ClientIP = shared.GetClientIP(r, ctx)
 
 	return ctx, nil
 }
@@ -204,6 +202,7 @@ func getStoreNameConfig() configure.Config {
 		configure.ConfigOption{Value: "debridlink", Label: "DebridLink"},
 		configure.ConfigOption{Value: "easydebrid", Label: "EasyDebrid"},
 		configure.ConfigOption{Value: "offcloud", Label: "Offcloud"},
+		configure.ConfigOption{Value: "pikpak", Label: "PikPak"},
 		configure.ConfigOption{Value: "premiumize", Label: "Premiumize"},
 		configure.ConfigOption{Value: "realdebrid", Label: "RealDebrid"},
 		configure.ConfigOption{Value: "torbox", Label: "TorBox"},
@@ -459,9 +458,7 @@ func handleResource(w http.ResponseWriter, r *http.Request) {
 			idx++
 		}
 
-		if len(streams) > 0 {
-			res.Data.Streams = streams
-		}
+		res.Data.Streams = streams
 
 		SendResponse(w, 200, res.Data)
 		return

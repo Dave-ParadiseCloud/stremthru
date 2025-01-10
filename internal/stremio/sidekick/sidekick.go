@@ -1,10 +1,12 @@
 package stremio_sidekick
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -226,6 +228,75 @@ func handleAddons(w http.ResponseWriter, r *http.Request) {
 
 	td := getTemplateData(cookie, r)
 	td.Addons = res.Data.Addons
+
+	buf, err := executeTemplate(td, "sidekick_addons_section.html")
+	if err != nil {
+		SendError(w, err)
+		return
+	}
+	SendHTML(w, 200, buf)
+}
+
+func handleAddonsBackup(w http.ResponseWriter, r *http.Request) {
+	if !IsMethod(r, http.MethodGet) {
+		shared.ErrorMethodNotAllowed(r).Send(w)
+		return
+	}
+
+	cookie, err := getCookieValue(w, r)
+	if err != nil {
+		SendError(w, err)
+		return
+	}
+
+	params := &stremio_api.GetAddonsParams{}
+	params.APIKey = cookie.AuthKey()
+	res, err := client.GetAddons(params)
+	if err != nil {
+		SendError(w, err)
+		return
+	}
+
+	filename := "Stremio-Addons-" + cookie.Email() + "-" + strconv.FormatInt(res.Data.LastModified.UnixMilli(), 10) + ".json"
+	w.Header().Add("HX-Trigger-After-Swap", `{"addons_backup_download":{"filename":"`+filename+`"}}`)
+
+	SendResponse(w, 200, res.Data)
+}
+
+func handleAddonsRestore(w http.ResponseWriter, r *http.Request) {
+	if !IsMethod(r, http.MethodPost) {
+		shared.ErrorMethodNotAllowed(r).Send(w)
+		return
+	}
+
+	cookie, err := getCookieValue(w, r)
+	if err != nil {
+		SendError(w, err)
+		return
+	}
+
+	td := getTemplateData(cookie, r)
+
+	td.BackupRestore.RestoreBlob = r.FormValue("blob")
+
+	backup := &stremio_api.GetAddonsData{}
+	err = json.Unmarshal([]byte(td.BackupRestore.RestoreBlob), backup)
+	if err != nil {
+		td.BackupRestore.Error.RestoreBlob = "failed to parse: " + err.Error()
+	}
+
+	if td.BackupRestore.Error.RestoreBlob == "" {
+		params := &stremio_api.SetAddonsParams{Addons: backup.Addons}
+		params.APIKey = cookie.AuthKey()
+		_, err := client.SetAddons(params)
+		if err == nil {
+			w.Header().Add("HX-Redirect", "/stremio/sidekick/?addon_operation=move&try_load_addons=1")
+			SendResponse(w, 200, "")
+			return
+		}
+
+		td.BackupRestore.Error.RestoreBlob = "failed to restore: " + err.Error()
+	}
 
 	buf, err := executeTemplate(td, "sidekick_addons_section.html")
 	if err != nil {
@@ -548,6 +619,8 @@ func AddStremioSidekickEndpoints(mux *http.ServeMux) {
 	mux.HandleFunc("/stremio/sidekick/logout", handleLogout)
 
 	mux.HandleFunc("/stremio/sidekick/addons", handleAddons)
+	mux.HandleFunc("/stremio/sidekick/addons/backup", handleAddonsBackup)
+	mux.HandleFunc("/stremio/sidekick/addons/restore", handleAddonsRestore)
 	mux.HandleFunc("/stremio/sidekick/addons/{transportUrl}/move/{direction}", handleAddonMove)
 	mux.HandleFunc("/stremio/sidekick/addons/{transportUrl}/reload", handleAddonReload)
 	mux.HandleFunc("/stremio/sidekick/addons/{transportUrl}/toggle", handleAddonToggle)

@@ -153,7 +153,7 @@ func (c *StoreClient) AddMagnet(params *store.AddMagnetParams) (*store.AddMagnet
 	return data, err
 }
 
-func statusCodeToMangetStatus(statusCode MagnetStatusCode) store.MagnetStatus {
+func statusCodeToMagnetStatus(statusCode MagnetStatusCode) store.MagnetStatus {
 	switch statusCode {
 	case MagnetStatusCodeQueued:
 		return store.MagnetStatusQueued
@@ -207,7 +207,7 @@ func (c *StoreClient) GetMagnet(params *store.GetMagnetParams) (*store.GetMagnet
 		Id:      strconv.Itoa(magnet.Id),
 		Hash:    magnet.Hash,
 		Name:    magnet.Filename,
-		Status:  statusCodeToMangetStatus(magnet.StatusCode),
+		Status:  statusCodeToMagnetStatus(magnet.StatusCode),
 		Files:   []store.MagnetFile{},
 		AddedAt: magnet.GetAddedAt(),
 	}
@@ -241,7 +241,7 @@ func (c *StoreClient) ListMagnets(params *store.ListMagnetsParams) (*store.ListM
 				Id:      strconv.Itoa(magnet.Id),
 				Hash:    magnet.Hash,
 				Name:    magnet.Filename,
-				Status:  statusCodeToMangetStatus(magnet.StatusCode),
+				Status:  statusCodeToMagnetStatus(magnet.StatusCode),
 				AddedAt: magnet.GetAddedAt(),
 			}
 

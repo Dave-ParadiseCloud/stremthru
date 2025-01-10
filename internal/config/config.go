@@ -1,13 +1,16 @@
 package config
 
 import (
+	"io"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/MunifTanjim/stremthru/core"
+	"github.com/MunifTanjim/stremthru/internal/request"
 	"github.com/MunifTanjim/stremthru/store"
 )
 
@@ -126,6 +129,50 @@ func (stc StoreTunnelConfigMap) IsEnabledForStream(name string) bool {
 	return true
 }
 
+func getIp(client *http.Client) (string, error) {
+	req, err := http.NewRequest(http.MethodGet, "https://checkip.amazonaws.com", nil)
+	if err != nil {
+		return "", err
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(string(body)), nil
+}
+
+type IPResolver struct {
+	machineIP string
+}
+
+func (ipr *IPResolver) GetMachineIP() string {
+	if ipr.machineIP == "" {
+		client := request.GetHTTPClient(false)
+		ip, err := getIp(client)
+		if err != nil {
+			log.Panicf("Failed to detect Machine IP: %v\n", err)
+		}
+		ipr.machineIP = ip
+	}
+	return ipr.machineIP
+}
+
+func (ipr *IPResolver) GetTunnelIP() string {
+	ip, err := getIp(request.DefaultHTTPClient)
+	if err != nil {
+		log.Println("Failed to detect Tunnel IP")
+		return ""
+	}
+	return ip
+}
+
 type Config struct {
 	Port               string
 	StoreAuthToken     StoreAuthTokenMap
@@ -143,6 +190,7 @@ type Config struct {
 	LandingPage        string
 	ServerStartTime    time.Time
 	StoreTunnel        StoreTunnelConfigMap
+	IP                 *IPResolver
 }
 
 func parseUri(uri string) (parsedUrl, parsedToken string) {
@@ -234,10 +282,11 @@ var config = func() Config {
 		RedisURI:           getEnv("STREMTHRU_REDIS_URI", ""),
 		DatabaseURI:        databaseUri,
 		StremioAddon:       stremioAddon,
-		Version:            "0.30.0", // x-release-please-version
+		Version:            "0.32.0", // x-release-please-version
 		LandingPage:        getEnv("STREMTHRU_LANDING_PAGE", "{}"),
 		ServerStartTime:    time.Now(),
 		StoreTunnel:        storeTunnelMap,
+		IP:                 &IPResolver{},
 	}
 }()
 
@@ -257,6 +306,7 @@ var Version = config.Version
 var LandingPage = config.LandingPage
 var ServerStartTime = config.ServerStartTime
 var StoreTunnel = config.StoreTunnel
+var IP = config.IP
 
 func getRedactedURI(uri string) (string, error) {
 	u, err := url.Parse(uri)
@@ -267,6 +317,12 @@ func getRedactedURI(uri string) (string, error) {
 }
 
 func PrintConfig() {
+	httpProxy, httpsProxy := getEnv("HTTP_PROXY", ""), getEnv("HTTPS_PROXY", "")
+	hasTunnel := httpProxy != "" || httpsProxy != ""
+
+	machineIP := IP.GetMachineIP()
+	tunnelIP := IP.GetTunnelIP()
+
 	l := log.New(os.Stderr, "=", 0)
 	l.Println("====== StremThru =======")
 	l.Printf(" Time: %v\n", ServerStartTime.Format(time.RFC3339))
@@ -275,8 +331,6 @@ func PrintConfig() {
 	l.Println("========================")
 	l.Println()
 
-	httpProxy, httpsProxy := getEnv("HTTP_PROXY", ""), getEnv("HTTPS_PROXY", "")
-	hasTunnel := httpProxy != "" || httpsProxy != ""
 	if hasTunnel {
 		l.Println(" Tunnel:")
 		if httpProxy != "" {
@@ -287,6 +341,12 @@ func PrintConfig() {
 		}
 		l.Println()
 	}
+
+	l.Println(" Machine IP: " + machineIP)
+	if hasTunnel {
+		l.Println("  Tunnel IP: " + tunnelIP)
+	}
+	l.Println()
 
 	usersCount := len(ProxyAuthPassword)
 	if usersCount > 0 {
@@ -315,6 +375,7 @@ func PrintConfig() {
 		store.StoreNameDebridLink,
 		store.StoreNameEasyDebrid,
 		store.StoreNameOffcloud,
+		store.StoreNamePikPak,
 		store.StoreNamePremiumize,
 		store.StoreNameRealDebrid,
 		store.StoreNameTorBox,

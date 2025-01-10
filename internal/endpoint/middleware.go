@@ -117,9 +117,9 @@ func StoreContext(next http.HandlerFunc) http.HandlerFunc {
 		ctx.Store = store
 		ctx.StoreAuthToken = getStoreAuthToken(r)
 		ctx.PeerToken = r.Header.Get("X-StremThru-Peer-Token")
-		if !ctx.IsProxyAuthorized {
-			ctx.ClientIP = core.GetClientIP(r)
-		}
+
+		ctx.ClientIP = shared.GetClientIP(r, ctx)
+
 		w.Header().Add("X-StremThru-Store-Name", r.Header.Get("X-StremThru-Store-Name"))
 		next.ServeHTTP(w, r)
 	})

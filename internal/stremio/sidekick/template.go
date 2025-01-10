@@ -33,6 +33,12 @@ type TemplateData struct {
 			Token    string
 		}
 	}
+	BackupRestore struct {
+		RestoreBlob string
+		Error       struct {
+			RestoreBlob string
+		}
+	}
 }
 
 func getTemplateData(cookie *CookieValue, r *http.Request) *TemplateData {

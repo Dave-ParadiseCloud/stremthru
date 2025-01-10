@@ -1,15 +1,11 @@
 package endpoint
 
 import (
-	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/MunifTanjim/stremthru/internal/config"
 	"github.com/MunifTanjim/stremthru/internal/context"
-	"github.com/MunifTanjim/stremthru/internal/request"
-	"github.com/MunifTanjim/stremthru/internal/shared"
 )
 
 type HealthData struct {
@@ -20,30 +16,6 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 	health := &HealthData{}
 	health.Status = "ok"
 	SendResponse(w, 200, health, nil)
-}
-
-func getIp(client *http.Client) (string, error) {
-	ip_req, err := http.NewRequest(http.MethodGet, "https://checkip.amazonaws.com", nil)
-	if err != nil {
-		return "", err
-	}
-
-	ip_res, err := client.Do(ip_req)
-	if err != nil {
-		return "", err
-	}
-
-	ip_body, err := io.ReadAll(ip_res.Body)
-	if err != nil {
-		return "", err
-	}
-
-	return strings.TrimSpace(string(ip_body)), nil
-}
-
-func getMachineIp() (string, error) {
-	client := shared.GetHTTPClient(false)
-	return getIp(client)
 }
 
 type HealthDebugDataIP struct {
@@ -84,8 +56,8 @@ func handleHealthDebug(w http.ResponseWriter, r *http.Request) {
 				Names:   config.StoreAuthToken.ListStores(ctx.ProxyAuthUser),
 			},
 		}
-		exposedIp, _ := getIp(request.DefaultHTTPClient)
-		machineIp, _ := getMachineIp()
+		exposedIp := config.IP.GetTunnelIP()
+		machineIp := config.IP.GetMachineIP()
 		data.IP = &HealthDebugDataIP{
 			Exposed: exposedIp,
 			Machine: machineIp,

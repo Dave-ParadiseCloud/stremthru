@@ -1,8 +1,16 @@
+<section id="addons_section" hx-swap="outerHTML"  data-operation="{{.AddonOperation}}">
+
 <style>
-#addons_list:not([data-operation="move"]) #addon_operation_move {
+#addons_section:not([data-operation="move"]) #addon_operation_move {
   display: none;
 }
-#addons_list:not([data-operation="manage"]) #addon_operation_manage {
+#addons_section:not([data-operation="manage"]) #addon_operation_manage {
+  display: none;
+}
+#addons_section:not([data-operation="move"]):not([data-operation="manage"]) #addons_list {
+  display: none;
+}
+#addons_section:not([data-operation="backup"]) #addons_backup {
   display: none;
 }
 #addon_error pre {
@@ -11,18 +19,17 @@
 }
 </style>
 
-<section id="addons_section">
-
 <header class="flex-row justify-space-between">
   <div>
     <select name="addon_operation" aria-label="Addon Operation" required onchange="onAddonOperationChange(this)">
       <option disabled value="">Operation</option>
       <option {{if eq .AddonOperation "move"}}selected{{end}} value="move">Move</option>
       <option {{if eq .AddonOperation "manage"}}selected{{end}} value="manage">Manage</option>
+      <option {{if eq .AddonOperation "backup"}}selected{{end}} value="backup">Backup/Restore</option>
     </select>
   </div>
   <div>
-    <button id="load_addons" hx-get="addons" hx-target="#addons_section">
+    <button id="load_addons" hx-get="addons" hx-target="#addons_section" hx-trigger="addons_load">
       {{if eq (len .Addons) 0}}Load{{else}}Refresh{{end}}
     </button>
   </div>
@@ -34,7 +41,7 @@
 </section>
 {{end}}
 
-<div id="addons_list" data-operation="{{.AddonOperation}}">
+<div id="addons_list">
   {{range $idx, $addon := .Addons}}
   <article>
     <header class="flex-row justify-space-between align-center">
@@ -160,11 +167,61 @@
   </article>
 </dialog>
 
+<div id="addons_backup">
+
+<article id="addons_backup_backup">
+  <header><h3>Backup Addons</h3></header>
+
+  <form hx-target="find textarea" hx-swap="innerHTML" hx-get="addons/backup">
+    <textarea readonly></textarea>
+    <button type="submit" class="grow">Backup</button>
+  </form>
+</article>
+
+<article id="addons_backup_restore">
+  <header>
+    <h3>Restore Addons</h3>
+    <small>
+      ⚠️ This is replace all the existing addons on your Stremio account! 
+    </small>
+  </header>
+
+  <form hx-post="addons/restore" hx-target="#addons_section">
+    <input type="file" accept=".json,application/json" onchange="onBackupRestoreFileSelect(event)">
+    <textarea name="blob" required {{if ne .BackupRestore.Error.RestoreBlob ""}}aria-invalid="true"{{end}}>{{.BackupRestore.RestoreBlob}}</textarea>
+    <small>
+      {{if ne .BackupRestore.Error.RestoreBlob ""}}<span class="error">{{.BackupRestore.Error.RestoreBlob}}</span> | {{end}}
+      Backup Content
+    </small>
+
+    <button type="submit" class="grow">Restore</button>
+  </form>
+</article>
+
+</div>
+
+
 <script>
+
+function tryLoadAddons() {
+  const url = new URL(window.location.href);
+  if (!url.searchParams.get("try_load_addons")) {
+    return;
+  }
+  url.searchParams.delete("try_load_addons");
+  window.history.replaceState(null, "", url.href);
+
+  setTimeout(() => {
+    htmx.trigger("button#load_addons", "addons_load");
+  }, 200);
+}
+
+tryLoadAddons();
+
 function onAddonOperationChange(el) {
   const operation = el.value;
 
-  document.querySelector("#addons_list").dataset.operation = operation;
+  document.querySelector("#addons_section").dataset.operation = operation;
 
   const url = new URL(window.location.href)
   url.searchParams.set("addon_operation", operation);
@@ -199,12 +256,15 @@ function onAddonReload(btn) {
     htmx.trigger(btn, "confirmed");
   }, { once: true });
 
-  modal.addEventListener("click", function(e) {
+  function onModalOutsideClick(e) {
     const content = modal.querySelector("article");
     if (!content.contains(e.target)) {
       onAddonReloadModalClose();
+      modal.removeEventListener("click", onModalOutsideClick);
     }
-  });
+  }
+
+  modal.addEventListener("click", onModalOutsideClick);
 
   document.querySelector("html").classList.add("modal-is-open");
   modal.setAttribute("open", "");
@@ -216,6 +276,40 @@ setTimeout(() => {
       window.scrollTo(0, addon_error.offsetTop);
     }
 }, 200)
+</script>
+
+<script>
+htmx.on("addons_backup_download", function(evt) {
+  const filename = evt.detail.filename;
+  const data = document.querySelector("#addons_backup_backup form textarea").value;
+  if (!data) {
+    return;
+  }
+  const blob = new Blob([data], {type: "application/json"});
+
+  const a = document.createElement("a");
+  a.download = filename;
+  a.href = URL.createObjectURL(blob);
+  a.target = "_blank";
+
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+});
+
+function onBackupRestoreFileSelect(e) {
+  const file = e.target.files[0];
+  if (!file) {
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    document.querySelector("#addons_backup_restore form textarea").value = e.target.result;
+  }
+  reader.readAsText(file);
+}
+
 </script>
 
 </section>

@@ -127,7 +127,7 @@ func CheckMagnet(s store.Store, hashes []string, storeToken string, clientIp str
 			core.LogError(fmt.Sprintf("[buddy] failed to check magnet, took %v", duration), err)
 			return data, nil
 		} else {
-			log.Printf("[buddy] check manget, took %v\n", duration)
+			log.Printf("[buddy] check magnet, took %v\n", duration)
 			filesByHash := map[string]magnet_cache.Files{}
 			for _, item := range res.Data.Items {
 				res_item := store.CheckMagnetDataItem{
@@ -167,7 +167,7 @@ func CheckMagnet(s store.Store, hashes []string, storeToken string, clientIp str
 			core.LogError(fmt.Sprintf("[buddy:upstream] failed to check magnet, took %v", duration), err)
 			return data, nil
 		} else {
-			log.Printf("[buddy:upstream] check manget, took %v\n", duration)
+			log.Printf("[buddy:upstream] check magnet, took %v\n", duration)
 			filesByHash := map[string]magnet_cache.Files{}
 			for _, item := range res.Data.Items {
 				files := magnet_cache.Files{}
