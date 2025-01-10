@@ -3,6 +3,7 @@ package shared
 import (
 	"net/http"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/MunifTanjim/stremthru/core"
@@ -77,12 +78,19 @@ type proxyLinkTokenData struct {
 	SkipTunnel bool   `json:"notun"`
 }
 
-func CreateProxyLink(r *http.Request, ctx *context.RequestContext, link string) (string, error) {
-	if !ctx.IsProxyAuthorized || ctx.StoreAuthToken != config.StoreAuthToken.GetToken(ctx.ProxyAuthUser, string(ctx.Store.GetName())) {
+func CreateProxyLink(r *http.Request, ctx *context.RequestContext, link string, headers map[string]string) (string, error) {
+	if !ctx.IsProxyAuthorized {
 		return link, nil
 	}
 
-	encryptedLink, err := core.Encrypt(ctx.ProxyAuthPassword, link)
+	linkBlob := link
+	if headers != nil {
+		for k, v := range headers {
+			linkBlob += "\n" + k + ": " + v
+		}
+	}
+
+	encryptedLink, err := core.Encrypt(ctx.ProxyAuthPassword, linkBlob)
 	if err != nil {
 		return "", err
 	}
@@ -129,19 +137,23 @@ func GenerateStremThruLink(r *http.Request, ctx *context.RequestContext, link st
 		return nil, err
 	}
 
-	proxyLink, err := CreateProxyLink(r, ctx, data.Link)
-	if err != nil {
-		return nil, err
-	}
+	storeName := string(ctx.Store.GetName())
+	if config.StoreContentProxy.IsEnabled(storeName) && ctx.StoreAuthToken == config.StoreAuthToken.GetToken(ctx.ProxyAuthUser, storeName) {
+		proxyLink, err := CreateProxyLink(r, ctx, data.Link, nil)
+		if err != nil {
+			return nil, err
+		}
 
-	data.Link = proxyLink
+		data.Link = proxyLink
+	}
 
 	return data, nil
 }
 
 type proxyLink struct {
-	Value string
-	NoTun bool
+	Value   string
+	Headers map[string]string
+	NoTun   bool
 }
 
 var proxyLinkTokenCache = func() cache.Cache[proxyLink] {
@@ -160,10 +172,10 @@ func getUserSecretFromJWT(t *jwt.Token) (string, []byte, error) {
 	return password, []byte(password), nil
 }
 
-func UnwrapProxyLinkToken(encodedToken string) (string, bool, error) {
+func UnwrapProxyLinkToken(encodedToken string) (string, map[string]string, bool, error) {
 	proxyLink := &proxyLink{}
 	if found := proxyLinkTokenCache.Get(encodedToken, proxyLink); found {
-		return proxyLink.Value, proxyLink.NoTun, nil
+		return proxyLink.Value, proxyLink.Headers, proxyLink.NoTun, nil
 	}
 
 	claims := &core.JWTClaims[proxyLinkTokenData]{}
@@ -173,21 +185,35 @@ func UnwrapProxyLinkToken(encodedToken string) (string, bool, error) {
 	}, encodedToken, claims)
 
 	if err != nil {
-		return "", false, err
+		return "", nil, false, err
 	}
 
 	secret, _, err := getUserSecretFromJWT(token)
 	if err != nil {
-		return "", false, err
+		return "", nil, false, err
 	}
 
 	proxyLink.NoTun = !claims.Data.SkipTunnel
-	proxyLink.Value, err = core.Decrypt(secret, claims.Data.EncLink)
+
+	linkBlob, err := core.Decrypt(secret, claims.Data.EncLink)
 	if err != nil {
-		return "", false, err
+		return "", nil, false, err
+	}
+
+	link, headersBlob, hasHeaders := strings.Cut(linkBlob, "\n")
+
+	proxyLink.Value = link
+
+	if hasHeaders {
+		proxyLink.Headers = map[string]string{}
+		for _, header := range strings.Split(headersBlob, "\n") {
+			if k, v, ok := strings.Cut(header, ": "); ok {
+				proxyLink.Headers[k] = v
+			}
+		}
 	}
 
 	proxyLinkTokenCache.Add(encodedToken, *proxyLink)
 
-	return proxyLink.Value, proxyLink.NoTun, nil
+	return proxyLink.Value, proxyLink.Headers, proxyLink.NoTun, nil
 }

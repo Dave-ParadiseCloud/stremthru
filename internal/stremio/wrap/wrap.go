@@ -396,6 +396,7 @@ func handleResource(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		storeNamePrefix := ""
 		isCachedByHash := map[string]bool{}
 		if len(hashes) > 0 {
 			stremId := strings.TrimSuffix(id, ".json")
@@ -411,11 +412,12 @@ func handleResource(w http.ResponseWriter, r *http.Request) {
 			for _, item := range cmRes.Items {
 				isCachedByHash[item.Hash] = item.Status == store.MagnetStatusCached
 			}
+
+			storeNamePrefix = "[" + strings.ToUpper(string(ctx.Store.GetName().Code())) + "] "
 		}
 
 		cachedStreams := []stremio.Stream{}
 		uncachedStreams := []stremio.Stream{}
-		storeNamePrefix := "[" + strings.ToUpper(string(ctx.Store.GetName().Code())) + "] "
 		for i := range res.Data.Streams {
 			stream := &res.Data.Streams[i]
 			if stream.URL == "" && stream.InfoHash != "" {
@@ -439,7 +441,12 @@ func handleResource(w http.ResponseWriter, r *http.Request) {
 					uncachedStreams = append(uncachedStreams, *stream)
 				}
 			} else if stream.URL != "" {
-				if url, err := shared.CreateProxyLink(r, ctx, stream.URL); err == nil && url != stream.URL {
+				var headers map[string]string
+				if stream.BehaviorHints != nil && stream.BehaviorHints.ProxyHeaders != nil && stream.BehaviorHints.ProxyHeaders.Request != nil {
+					headers = stream.BehaviorHints.ProxyHeaders.Request
+				}
+
+				if url, err := shared.CreateProxyLink(r, ctx, stream.URL, headers); err == nil && url != stream.URL {
 					stream.URL = url
 					stream.Name = "✨ " + stream.Name
 				}

@@ -102,6 +102,20 @@ func (sa StremioAddonConfig) IsEnabled(name string) bool {
 	return false
 }
 
+type StoreContentProxyMap map[string]bool
+
+func (scp StoreContentProxyMap) IsEnabled(name string) bool {
+	if enabled, ok := scp[name]; ok {
+		return enabled
+	}
+	if name != "*" {
+		scp[name] = scp.IsEnabled("*")
+	} else {
+		scp[name] = true
+	}
+	return scp[name]
+}
+
 type StoreTunnelConfig struct {
 	api    bool
 	stream bool
@@ -189,6 +203,7 @@ type Config struct {
 	Version            string
 	LandingPage        string
 	ServerStartTime    time.Time
+	StoreContentProxy  StoreContentProxyMap
 	StoreTunnel        StoreTunnelConfigMap
 	IP                 *IPResolver
 }
@@ -255,6 +270,17 @@ var config = func() Config {
 		}),
 	}
 
+	storeContentProxyList := strings.FieldsFunc(getEnv("STREMTHRU_STORE_CONTENT_PROXY", "*:true"), func(c rune) bool {
+		return c == ','
+	})
+
+	storeContentProxyMap := make(StoreContentProxyMap)
+	for _, storeContentProxy := range storeContentProxyList {
+		if store, enabled, ok := strings.Cut(storeContentProxy, ":"); ok {
+			storeContentProxyMap[store] = enabled == "true"
+		}
+	}
+
 	storeTunnelList := strings.FieldsFunc(getEnv("STREMTHRU_STORE_TUNNEL", "*:true"), func(c rune) bool {
 		return c == ','
 	})
@@ -282,9 +308,10 @@ var config = func() Config {
 		RedisURI:           getEnv("STREMTHRU_REDIS_URI", ""),
 		DatabaseURI:        databaseUri,
 		StremioAddon:       stremioAddon,
-		Version:            "0.32.0", // x-release-please-version
+		Version:            "0.33.0", // x-release-please-version
 		LandingPage:        getEnv("STREMTHRU_LANDING_PAGE", "{}"),
 		ServerStartTime:    time.Now(),
+		StoreContentProxy:  storeContentProxyMap,
 		StoreTunnel:        storeTunnelMap,
 		IP:                 &IPResolver{},
 	}
@@ -305,6 +332,7 @@ var StremioAddon = config.StremioAddon
 var Version = config.Version
 var LandingPage = config.LandingPage
 var ServerStartTime = config.ServerStartTime
+var StoreContentProxy = config.StoreContentProxy
 var StoreTunnel = config.StoreTunnel
 var IP = config.IP
 
@@ -380,17 +408,25 @@ func PrintConfig() {
 		store.StoreNameRealDebrid,
 		store.StoreNameTorBox,
 	} {
-		tunnelConfig := ""
+		storeConfig := ""
+		if usersCount > 0 && StoreContentProxy.IsEnabled(string(store)) {
+			storeConfig += "content_proxy"
+		}
 		if hasTunnel {
 			if StoreTunnel.IsEnabledForAPI(string(store)) {
-				tunnelConfig += "api"
-				if usersCount > 0 && StoreTunnel.IsEnabledForStream(string(store)) {
-					tunnelConfig += "+stream"
+				if storeConfig != "" {
+					storeConfig += ","
 				}
-				tunnelConfig = " (tunnel:" + tunnelConfig + ")"
+				storeConfig += "tunnel:api"
+				if usersCount > 0 && StoreTunnel.IsEnabledForStream(string(store)) {
+					storeConfig += "+stream"
+				}
 			}
 		}
-		l.Println("   - " + string(store) + tunnelConfig)
+		if storeConfig != "" {
+			storeConfig = " (" + storeConfig + ")"
+		}
+		l.Println("   - " + string(store) + storeConfig)
 	}
 	l.Println()
 

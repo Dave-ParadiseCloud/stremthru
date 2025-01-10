@@ -29,7 +29,7 @@
     </select>
   </div>
   <div>
-    <button id="load_addons" hx-get="addons" hx-target="#addons_section" hx-trigger="addons_load">
+    <button id="load_addons" hx-get="addons" hx-target="#addons_section" hx-trigger="click, addons_load">
       {{if eq (len .Addons) 0}}Load{{else}}Refresh{{end}}
     </button>
   </div>

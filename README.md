@@ -27,6 +27,46 @@ Companion for Stremio.
 - [JavaScript](./sdk/js)
 - [Python](./sdk/py)
 
+### Concepts
+
+#### Store
+
+_Store_ is an external service that provides access to content. StremThru acts as an interface for the _store_.
+
+#### Store Content Proxy
+
+StremThru can proxy the content from the _store_. For proxy authorized requests, this is enabled by default.
+
+```mermaid
+sequenceDiagram
+    participant User as User Device
+    participant StremThru as StremThru
+    participant Store as Store
+
+    User->>StremThru: Request Content
+    StremThru->>Store: Request Content
+    loop Byte Serving
+      Store-->>StremThru: Content Chunk
+      StremThru-->>User: Content Chunk
+    end
+```
+
+#### Store Tunnel
+
+If you can't access the _store_ using your IP, you can use HTTP(S) Proxy to tunnel the traffic to the _store_.
+
+```mermaid
+sequenceDiagram
+    participant Client as StremThru
+    participant Proxy as HTTP(S) Proxy
+    participant Server as Store
+
+    Client->>Proxy: HTTP Request
+    Proxy->>Server: Forward HTTP Request
+    Server->>Proxy: HTTP Response
+    Proxy->>Client: Forward HTTP Response
+```
+
 ## Configuration
 
 Configuration is done using environment variables.
@@ -62,6 +102,7 @@ If `username` is `*`, it is used as fallback for users without explicit store cr
 | Debrid-Link | `debridlink` | `<api-key>`          |
 | EasyDebrid  | `easydebrid` | `<api-key>`          |
 | Offcloud    | `offcloud`   | `<email>:<password>` |
+| PikPak      | `pikpak`     | `<email>:<password>` |
 | Premiumize  | `premiumize` | `<api-key>`          |
 | RealDebrid  | `realdebrid` | `<api-token>`        |
 | Torbox      | `torbox`     | `<api-key>`          |
@@ -79,6 +120,19 @@ Comma separated list of tunnel config for stores, in `store_name:tunnel_config` 
 If `store_name` is `*`, it is used as fallback.
 
 When enabled, `STREMTHRU_HTTP_PROXY` and `STREMTHRU_HTTPS_PROXY` will be used to tunnel traffic for the store.
+
+#### `STREMTHRU_STORE_CONTENT_PROXY`
+
+Comma separated list of store content proxy config, in `store_name:content_proxy_config` format.
+
+| `content_proxy_config` | Description         |
+| ---------------------- | ------------------- |
+| `true`                 | Enable              |
+| `false`                | Disable             |
+
+If `store_name` is `*`, it is used as fallback.
+
+When enabled, StremThru will proxy the content from the store.
 
 #### `STREMTHRU_PEER_URI`
 
