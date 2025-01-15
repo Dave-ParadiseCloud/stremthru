@@ -634,18 +634,20 @@ func handleStrem(w http.ResponseWriter, r *http.Request) {
 }
 
 func AddStremioWrapEndpoints(mux *http.ServeMux) {
+	withCors := shared.Middleware(shared.EnableCORS)
+
 	mux.HandleFunc("/stremio/wrap", handleRoot)
 	mux.HandleFunc("/stremio/wrap/{$}", handleRoot)
 
-	mux.HandleFunc("/stremio/wrap/manifest.json", handleManifest)
-	mux.HandleFunc("/stremio/wrap/{userData}/manifest.json", handleManifest)
+	mux.HandleFunc("/stremio/wrap/manifest.json", withCors(handleManifest))
+	mux.HandleFunc("/stremio/wrap/{userData}/manifest.json", withCors(handleManifest))
 
 	mux.HandleFunc("/stremio/wrap/configure", handleConfigure)
 	mux.HandleFunc("/stremio/wrap/{userData}/configure", handleConfigure)
 
-	mux.HandleFunc("/stremio/wrap/{userData}/{resource}/{contentType}/{id}", handleResource)
-	mux.HandleFunc("/stremio/wrap/{userData}/{resource}/{contentType}/{id}/{extra}", handleResource)
+	mux.HandleFunc("/stremio/wrap/{userData}/{resource}/{contentType}/{id}", withCors(handleResource))
+	mux.HandleFunc("/stremio/wrap/{userData}/{resource}/{contentType}/{id}/{extra}", withCors(handleResource))
 
-	mux.HandleFunc("/stremio/wrap/{userData}/_/strem/{magnetHash}/{fileIdx}/{$}", handleStrem)
-	mux.HandleFunc("/stremio/wrap/{userData}/_/strem/{magnetHash}/{fileIdx}/{fileName}", handleStrem)
+	mux.HandleFunc("/stremio/wrap/{userData}/_/strem/{magnetHash}/{fileIdx}/{$}", withCors(handleStrem))
+	mux.HandleFunc("/stremio/wrap/{userData}/_/strem/{magnetHash}/{fileIdx}/{fileName}", withCors(handleStrem))
 }

@@ -47,7 +47,7 @@ func TrackMagnet(s store.Store, hash string, files []store.MagnetFile, sid strin
 		}
 	}
 
-	if config.HasPeer {
+	if config.HasPeer && config.PeerAuthToken != "" {
 		params := &peer.TrackMagnetParams{
 			StoreName:  s.GetName(),
 			StoreToken: storeToken,

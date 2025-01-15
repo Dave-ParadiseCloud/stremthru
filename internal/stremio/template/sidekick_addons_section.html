@@ -172,7 +172,7 @@
 <article id="addons_backup_backup">
   <header><h3>Backup Addons</h3></header>
 
-  <form hx-target="find textarea" hx-swap="innerHTML" hx-get="addons/backup">
+  <form hx-ext="htmx-download" hx-target="find textarea" hx-swap="innerHTML" hx-get="addons/backup">
     <textarea readonly></textarea>
     <button type="submit" class="grow">Backup</button>
   </form>
@@ -279,24 +279,6 @@ setTimeout(() => {
 </script>
 
 <script>
-htmx.on("addons_backup_download", function(evt) {
-  const filename = evt.detail.filename;
-  const data = document.querySelector("#addons_backup_backup form textarea").value;
-  if (!data) {
-    return;
-  }
-  const blob = new Blob([data], {type: "application/json"});
-
-  const a = document.createElement("a");
-  a.download = filename;
-  a.href = URL.createObjectURL(blob);
-  a.target = "_blank";
-
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-});
-
 function onBackupRestoreFileSelect(e) {
   const file = e.target.files[0];
   if (!file) {
@@ -309,7 +291,6 @@ function onBackupRestoreFileSelect(e) {
   }
   reader.readAsText(file);
 }
-
 </script>
 
 </section>

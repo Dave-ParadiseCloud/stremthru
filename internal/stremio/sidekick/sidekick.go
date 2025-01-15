@@ -258,7 +258,7 @@ func handleAddonsBackup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filename := "Stremio-Addons-" + cookie.Email() + "-" + strconv.FormatInt(res.Data.LastModified.UnixMilli(), 10) + ".json"
-	w.Header().Add("HX-Trigger-After-Swap", `{"addons_backup_download":{"filename":"`+filename+`"}}`)
+	w.Header().Add("Content-Disposition", `attachment; filename="`+filename+`"`)
 
 	SendResponse(w, 200, res.Data)
 }

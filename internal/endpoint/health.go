@@ -56,7 +56,7 @@ func handleHealthDebug(w http.ResponseWriter, r *http.Request) {
 				Names:   config.StoreAuthToken.ListStores(ctx.ProxyAuthUser),
 			},
 		}
-		exposedIp := config.IP.GetTunnelIP()
+		exposedIp, _ := config.IP.GetTunnelIP()
 		machineIp := config.IP.GetMachineIP()
 		data.IP = &HealthDebugDataIP{
 			Exposed: exposedIp,

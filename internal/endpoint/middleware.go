@@ -11,21 +11,14 @@ import (
 	"github.com/MunifTanjim/stremthru/store"
 )
 
-type MiddlewareFunc func(http.HandlerFunc) http.HandlerFunc
-
 func withRequestContext(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		next.ServeHTTP(w, context.SetRequestContext(r))
 	})
 }
 
-func Middleware(middlewares ...MiddlewareFunc) MiddlewareFunc {
-	return func(next http.HandlerFunc) http.HandlerFunc {
-		for i := len(middlewares) - 1; i >= 0; i-- {
-			next = middlewares[i](next)
-		}
-		return withRequestContext(next)
-	}
+func Middleware(middlewares ...shared.MiddlewareFunc) shared.MiddlewareFunc {
+	return shared.Middleware(append([]shared.MiddlewareFunc{withRequestContext}, middlewares...)...)
 }
 
 func extractProxyAuthToken(r *http.Request) (token string, hasToken bool) {

@@ -162,7 +162,7 @@ func ProxyResponse(w http.ResponseWriter, r *http.Request, url string, useTunnel
 
 	_, err = io.Copy(w, response.Body)
 	if err != nil {
-		log.Printf("stream failure: %v", err)
+		log.Printf("[proxy] connection closed: %v", err)
 	}
 }
 

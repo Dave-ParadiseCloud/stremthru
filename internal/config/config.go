@@ -178,13 +178,12 @@ func (ipr *IPResolver) GetMachineIP() string {
 	return ipr.machineIP
 }
 
-func (ipr *IPResolver) GetTunnelIP() string {
+func (ipr *IPResolver) GetTunnelIP() (string, error) {
 	ip, err := getIp(request.DefaultHTTPClient)
 	if err != nil {
-		log.Println("Failed to detect Tunnel IP")
-		return ""
+		return "", err
 	}
-	return ip
+	return ip, nil
 }
 
 type Config struct {
@@ -349,7 +348,14 @@ func PrintConfig() {
 	hasTunnel := httpProxy != "" || httpsProxy != ""
 
 	machineIP := IP.GetMachineIP()
-	tunnelIP := IP.GetTunnelIP()
+	tunnelIP := ""
+	if hasTunnel {
+		ip, err := IP.GetTunnelIP()
+		if err != nil {
+			log.Panicf("Failed to resolve Tunnel IP: %v\n", err)
+		}
+		tunnelIP = ip
+	}
 
 	l := log.New(os.Stderr, "=", 0)
 	l.Println("====== StremThru =======")

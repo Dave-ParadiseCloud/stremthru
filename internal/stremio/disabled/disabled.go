@@ -20,7 +20,6 @@ func handleManifest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	if err := json.NewEncoder(w).Encode(manifest); err != nil {
@@ -34,11 +33,12 @@ func handleConfigure(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	http.Redirect(w, r, "/stremio/sidekick/?addon_operation=manage", http.StatusFound)
+	http.Redirect(w, r, "/stremio/sidekick/?addon_operation=manage&try_load_addons=1", http.StatusFound)
 }
 
 func AddStremioDisabledEndpoints(mux *http.ServeMux) {
-	mux.HandleFunc("/stremio/disabled/{manifestUrl}/manifest.json", handleManifest)
+	withCors := shared.Middleware(shared.EnableCORS)
+
+	mux.HandleFunc("/stremio/disabled/{manifestUrl}/manifest.json", withCors(handleManifest))
 	mux.HandleFunc("/stremio/disabled/{manifestUrl}/configure", handleConfigure)
 }

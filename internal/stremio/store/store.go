@@ -720,22 +720,24 @@ func handleStrem(w http.ResponseWriter, r *http.Request) {
 }
 
 func AddStremioStoreEndpoints(mux *http.ServeMux) {
+	withCors := shared.Middleware(shared.EnableCORS)
+
 	mux.HandleFunc("/stremio/store", handleRoot)
 	mux.HandleFunc("/stremio/store/{$}", handleRoot)
 
-	mux.HandleFunc("/stremio/store/manifest.json", handleManifest)
-	mux.HandleFunc("/stremio/store/{userData}/manifest.json", handleManifest)
+	mux.HandleFunc("/stremio/store/manifest.json", withCors(handleManifest))
+	mux.HandleFunc("/stremio/store/{userData}/manifest.json", withCors(handleManifest))
 
 	mux.HandleFunc("/stremio/store/configure", handleConfigure)
 	mux.HandleFunc("/stremio/store/{userData}/configure", handleConfigure)
 
-	mux.HandleFunc("/stremio/store/{userData}/catalog/{contentType}/{idJson}", handleCatalog)
-	mux.HandleFunc("/stremio/store/{userData}/catalog/{contentType}/{id}/{extraJson}", handleCatalog)
+	mux.HandleFunc("/stremio/store/{userData}/catalog/{contentType}/{idJson}", withCors(handleCatalog))
+	mux.HandleFunc("/stremio/store/{userData}/catalog/{contentType}/{id}/{extraJson}", withCors(handleCatalog))
 
-	mux.HandleFunc("/stremio/store/{userData}/meta/{contentType}/{idJson}", handleMeta)
+	mux.HandleFunc("/stremio/store/{userData}/meta/{contentType}/{idJson}", withCors(handleMeta))
 
-	mux.HandleFunc("/stremio/store/{userData}/stream/{contentType}/{idJson}", handleStream)
+	mux.HandleFunc("/stremio/store/{userData}/stream/{contentType}/{idJson}", withCors(handleStream))
 
-	mux.HandleFunc("/stremio/store/{userData}/_/action/{actionId}", handleAction)
-	mux.HandleFunc("/stremio/store/{userData}/_/strem/{videoId}", handleStrem)
+	mux.HandleFunc("/stremio/store/{userData}/_/action/{actionId}", withCors(handleAction))
+	mux.HandleFunc("/stremio/store/{userData}/_/strem/{videoId}", withCors(handleStrem))
 }

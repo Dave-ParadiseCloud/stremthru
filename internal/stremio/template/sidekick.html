@@ -84,6 +84,46 @@
       button.ariaBusy = false;
     }
   });
+
+  htmx.defineExtension("htmx-download", {
+    onEvent: (name, evt) => {
+      if (name == "htmx:beforeSwap") {
+        const status = evt.detail.xhr.status;
+        if (status == 200) {
+          const data = evt.detail.xhr.response;
+
+          const heqdersBlob = evt.detail.xhr.getAllResponseHeaders();
+          const headerLines = heqdersBlob.trim().split(/[\r\n]+/);
+          const headers = {}
+          for (const line of headerLines) {
+            const [key, ...parts] = line.split(": ");
+            headers[key] = parts.join(": ");
+          }
+
+          const filename = headers["content-disposition"]?.split("=")[1].replace(/^"/, "").replace(/"$/, "");
+          const mimetype = headers["content-type"];
+          if (!filename || !mimetype) {
+            return;
+          }
+
+          const blob = new Blob([data], { type: mimetype });
+
+          const a = document.createElement("a");
+          a.download = filename;
+          a.href = URL.createObjectURL(blob);
+          a.target = "_blank";
+          a.style.display = "none";
+
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            a.parentNode.removeChild(a);
+          }, 100);
+        }
+      }
+      return true;
+    },
+  })
 </script>
 {{end}}
 
