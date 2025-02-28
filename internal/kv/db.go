@@ -34,6 +34,8 @@ type KVStore[V any] interface {
 	List() ([]ParsedKV[V], error)
 	Set(key string, value V) error
 	Del(key string) error
+
+	WithScope(scope string) KVStore[V]
 }
 
 type SQLKVStore[V any] struct {
@@ -41,7 +43,7 @@ type SQLKVStore[V any] struct {
 	getKey func(key string) string
 }
 
-func (kv SQLKVStore[V]) Get(key string, value *V) error {
+func (kv *SQLKVStore[V]) Get(key string, value *V) error {
 	var val string
 	query := "SELECT v FROM " + TableName + " WHERE t = ? AND k = ?"
 	row := db.QueryRow(query, kv.t, kv.getKey(key))
@@ -54,7 +56,7 @@ func (kv SQLKVStore[V]) Get(key string, value *V) error {
 	return json.Unmarshal([]byte(val), &value)
 }
 
-func (kv SQLKVStore[V]) List() ([]ParsedKV[V], error) {
+func (kv *SQLKVStore[V]) List() ([]ParsedKV[V], error) {
 	if kv.t == "" {
 		return nil, errors.New("missing kv type value")
 	}
@@ -85,7 +87,7 @@ func (kv SQLKVStore[V]) List() ([]ParsedKV[V], error) {
 	return vs, nil
 }
 
-func (kv SQLKVStore[V]) Set(key string, value V) error {
+func (kv *SQLKVStore[V]) Set(key string, value V) error {
 	val, err := json.Marshal(value)
 	if err != nil {
 		return err
@@ -95,13 +97,22 @@ func (kv SQLKVStore[V]) Set(key string, value V) error {
 	return err
 }
 
-func (kv SQLKVStore[V]) Del(key string) error {
+func (kv *SQLKVStore[V]) Del(key string) error {
 	query := "DELETE FROM " + TableName + " WHERE t = ? AND k = ?"
 	_, err := db.Exec(query, kv.t, kv.getKey(key))
 	return err
 }
 
-func NewKVStore[V any](config *KVStoreConfig) *SQLKVStore[V] {
+func (kv *SQLKVStore[V]) WithScope(scope string) KVStore[V] {
+	if scope == "" {
+		return kv
+	}
+	skv := *kv
+	skv.t = skv.t + ":" + scope
+	return &skv
+}
+
+func NewKVStore[V any](config *KVStoreConfig) KVStore[V] {
 	if config.Type != "" && config.GetKey == nil {
 		config.GetKey = func(key string) string {
 			return key
